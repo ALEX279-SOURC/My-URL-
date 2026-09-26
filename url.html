@@ -154,79 +154,74 @@
     </div>
   </div>
 
-  <script>
-    async function shortenUrl() {
-      const urlInput = document.getElementById("longUrl");
-      const shortenBtn = document.getElementById("shortenBtn");
-      const resultBox = document.getElementById("resultBox");
-      const errorMsg = document.getElementById("errorMsg");
-      const shortUrlLink = document.getElementById("shortUrlLink");
+ <script>
+  async function shortenUrl() {
+    const urlInput = document.getElementById("longUrl");
+    const shortenBtn = document.getElementById("shortenBtn");
+    const resultBox = document.getElementById("resultBox");
+    const errorMsg = document.getElementById("errorMsg");
+    const shortUrlLink = document.getElementById("shortUrlLink");
 
-      const longUrl = urlInput.value.trim();
+    const longUrl = urlInput.value.trim();
 
-      // Reset UI
-      errorMsg.style.display = "none";
-      resultBox.style.display = "none";
+    // Reset UI
+    errorMsg.style.display = "none";
+    resultBox.style.display = "none";
 
-      // Basic validation
-      if (!longUrl) {
-        showError("Kripya ek valid URL enter karein!");
-        return;
-      }
+    if (!longUrl) {
+      showError("Kripya ek valid URL enter karein!");
+      return;
+    }
 
-      // Check if URL has http or https
-      let finalUrl = longUrl;
-      if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
-        finalUrl = "https://" + longUrl;
-      }
+    let finalUrl = longUrl;
+    if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
+      finalUrl = "https://" + longUrl;
+    }
 
-      // Loading state
-      shortenBtn.innerText = "Shortening...";
-      shortenBtn.disabled = true;
+    shortenBtn.innerText = "Shortening...";
+    shortenBtn.disabled = true;
 
-      try {
-        // TinyURL Free API call
-        const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
-        
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
+    try {
+      const apiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(finalUrl)}`;
+      const response = await fetch(apiUrl);
+      const data = await response.json();
 
-        const shortUrl = await response.text();
-
-        // Display Result
-        shortUrlLink.href = shortUrl;
-        shortUrlLink.innerText = shortUrl;
+      if (data.shorturl) {
+        shortUrlLink.href = data.shorturl;
+        shortUrlLink.innerText = data.shorturl;
         resultBox.style.display = "flex";
-      } catch (err) {
-        showError("Link short karne me dikkat aayi. Ek baar internet connection check karein.");
-      } finally {
-        shortenBtn.innerText = "Shorten URL";
-        shortenBtn.disabled = false;
+      } else {
+        throw new Error(data.errormessage || "Error creating short URL");
       }
+    } catch (err) {
+      showError("Link short karne me dikkat aayi. Ek baar URL check karein.");
+    } finally {
+      shortenBtn.innerText = "Shorten URL";
+      shortenBtn.disabled = false;
     }
+  }
 
-    function copyLink() {
-      const shortUrl = document.getElementById("shortUrlLink").innerText;
-      const copyBtn = document.getElementById("copyBtn");
+  function copyLink() {
+    const shortUrl = document.getElementById("shortUrlLink").innerText;
+    const copyBtn = document.getElementById("copyBtn");
 
-      navigator.clipboard.writeText(shortUrl).then(() => {
-        copyBtn.innerText = "Copied! ✓";
-        copyBtn.style.background = "#2f855a";
-        
-        setTimeout(() => {
-          copyBtn.innerText = "Copy";
-          copyBtn.style.background = "#48bb78";
-        }, 2000);
-      });
-    }
+    navigator.clipboard.writeText(shortUrl).then(() => {
+      copyBtn.innerText = "Copied! ✓";
+      copyBtn.style.background = "#2f855a";
 
-    function showError(message) {
-      const errorMsg = document.getElementById("errorMsg");
-      errorMsg.innerText = message;
-      errorMsg.style.display = "block";
-    }
-  </script>
+      setTimeout(() => {
+        copyBtn.innerText = "Copy";
+        copyBtn.style.background = "#48bb78";
+      }, 2000);
+    });
+  }
+
+  function showError(message) {
+    const errorMsg = document.getElementById("errorMsg");
+    errorMsg.innerText = message;
+    errorMsg.style.display = "block";
+  }
+</script>
 
 </body>
   </html>
