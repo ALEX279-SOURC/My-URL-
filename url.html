@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quick URL Shortener</title>
+  <title>Quick URL Shortener & QR</title>
+  <!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -23,7 +25,7 @@
 
     .container {
       background: #ffffff;
-      padding: 35px 30px;
+      padding: 30px 24px;
       border-radius: 16px;
       box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
       max-width: 480px;
@@ -32,14 +34,14 @@
     }
 
     h2 {
-      color: #333;
-      margin-bottom: 8px;
+      color: #2d3748;
+      margin-bottom: 6px;
     }
 
     p.subtitle {
-      color: #666;
+      color: #718096;
       font-size: 14px;
-      margin-bottom: 25px;
+      margin-bottom: 22px;
     }
 
     .input-box {
@@ -50,10 +52,10 @@
 
     input[type="url"] {
       width: 100%;
-      padding: 14px;
+      padding: 13px 15px;
       border: 2px solid #e2e8f0;
       border-radius: 10px;
-      font-size: 15px;
+      font-size: 14px;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -63,12 +65,12 @@
     }
 
     button.shorten-btn {
-      padding: 14px;
+      padding: 13px;
       background: #667eea;
       color: white;
       border: none;
       border-radius: 10px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.2s, transform 0.1s;
@@ -89,47 +91,141 @@
 
     /* Result Box */
     .result-box {
-      margin-top: 25px;
-      padding: 15px;
+      margin-top: 22px;
+      padding: 16px;
       background: #f7fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 10px;
+      border-radius: 12px;
       display: none;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      gap: 14px;
     }
 
     .short-url-text {
       color: #2b6cb0;
       font-weight: 600;
+      font-size: 15px;
       text-decoration: none;
       word-break: break-all;
-      text-align: left;
     }
 
-    .copy-btn {
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
       padding: 8px 14px;
-      background: #48bb78;
-      color: white;
       border: none;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      white-space: nowrap;
+      text-decoration: none;
       transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
+    .copy-btn {
+      background: #48bb78;
+      color: white;
+    }
     .copy-btn:hover {
       background: #38a169;
     }
 
+    .open-btn {
+      background: #3182ce;
+      color: white;
+    }
+    .open-btn:hover {
+      background: #2b6cb0;
+    }
+
+    /* QR Section */
+    #qrcode {
+      padding: 10px;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: center;
+    }
+
     .error-msg {
       color: #e53e3e;
-      font-size: 14px;
-      margin-top: 15px;
+      font-size: 13px;
+      margin-top: 12px;
       display: none;
+    }
+
+    /* History Section */
+    .history-box {
+      margin-top: 24px;
+      text-align: left;
+      border-top: 1px solid #edf2f7;
+      padding-top: 15px;
+      display: none;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .history-header h4 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #718096;
+    }
+
+    .clear-history-btn {
+      background: none;
+      border: none;
+      color: #e53e3e;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .history-list {
+      list-style: none;
+      max-height: 140px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .history-item {
+      padding: 8px 10px;
+      background: #f7fafc;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .history-item a {
+      color: #4a5568;
+      text-decoration: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 280px;
+    }
+
+    .history-item a:hover {
+      color: #667eea;
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -137,135 +233,205 @@
 
   <div class="container">
     <h2>URL Shortener</h2>
-    <p class="subtitle">Lamba link daalo aur turant short link pao</p>
+    <p class="subtitle">Lamba link daalo, short link aur QR Code pao</p>
 
     <div class="input-box">
       <input type="url" id="longUrl" placeholder="https://example.com/bahut-bada-link" required />
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
     </div>
 
-    <!-- Error Message -->
+    <!-- Error message -->
     <div class="error-msg" id="errorMsg"></div>
 
-    <!-- Short URL Output -->
+    <!-- Result Box -->
     <div class="result-box" id="resultBox">
       <a href="#" target="_blank" class="short-url-text" id="shortUrlLink"></a>
-      <button class="copy-btn" id="copyBtn" onclick="copyLink()">Copy</button>
+      
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>
+        <a href="#" target="_blank" class="btn open-btn" id="openBtn">Open in Browser ↗</a>
+      </div>
+
+      <!-- QR Code Output -->
+      <div id="qrcode"></div>
+    </div>
+
+    <!-- Recent Links History -->
+    <div class="history-box" id="historyBox">
+      <div class="history-header">
+        <h4>Recent Links</h4>
+        <button class="clear-history-btn" onclick="clearHistory()">Clear</button>
+      </div>
+      <ul class="history-list" id="historyList"></ul>
     </div>
   </div>
 
-<script>
-  async function shortenUrl() {
-    const urlInput = document.getElementById("longUrl");
-    const shortenBtn = document.getElementById("shortenBtn");
-    const resultBox = document.getElementById("resultBox");
-    const errorMsg = document.getElementById("errorMsg");
-    const shortUrlLink = document.getElementById("shortUrlLink");
+  <script>
+    let qrCodeInstance = null;
 
-    const longUrl = urlInput.value.trim();
+    // Load history when page opens
+    window.onload = function() {
+      renderHistory();
+    };
 
-    errorMsg.style.display = "none";
-    resultBox.style.display = "none";
+    async function shortenUrl() {
+      const urlInput = document.getElementById("longUrl");
+      const shortenBtn = document.getElementById("shortenBtn");
+      const resultBox = document.getElementById("resultBox");
+      const errorMsg = document.getElementById("errorMsg");
 
-    if (!longUrl) {
-      showError("Kripya ek valid URL enter karein!");
-      return;
+      const longUrl = urlInput.value.trim();
+
+      errorMsg.style.display = "none";
+      resultBox.style.display = "none";
+
+      if (!longUrl) {
+        showError("Kripya ek valid URL enter karein!");
+        return;
+      }
+
+      let finalUrl = longUrl;
+      if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
+        finalUrl = "https://" + longUrl;
+      }
+
+      shortenBtn.innerText = "Shortening...";
+      shortenBtn.disabled = true;
+
+      try {
+        const response = await fetch("https://api.tinyurl.com/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: finalUrl, domain: "tinyurl.com" })
+        });
+
+        if (!response.ok) {
+          const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
+          const fallbackUrl = await fallbackRes.text();
+          if (fallbackUrl && fallbackUrl.startsWith("http")) {
+            showResult(fallbackUrl);
+            saveToHistory(fallbackUrl);
+            return;
+          }
+          throw new Error("TinyURL plain text failed");
+        }
+
+        const data = await response.json();
+        if (data.data && data.data.tiny_url) {
+          showResult(data.data.tiny_url);
+          saveToHistory(data.data.tiny_url);
+        } else {
+          throw new Error("Invalid response format");
+        }
+      } catch (err) {
+        try {
+          const altRes = await fetch("https://spoo.me/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Accept": "application/json"
+            },
+            body: `url=${encodeURIComponent(finalUrl)}`
+          });
+          const altData = await altRes.json();
+          if (altData.short_url) {
+            showResult(altData.short_url);
+            saveToHistory(altData.short_url);
+            return;
+          }
+        } catch (e) {
+          // Fallback failed
+        }
+        showError("Link short nahi ho paya. URL ek baar check karein.");
+      } finally {
+        shortenBtn.innerText = "Shorten URL";
+        shortenBtn.disabled = false;
+      }
     }
 
-    let finalUrl = longUrl;
-    if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
-      finalUrl = "https://" + longUrl;
-    }
+    function showResult(url) {
+      const shortUrlLink = document.getElementById("shortUrlLink");
+      const openBtn = document.getElementById("openBtn");
+      const resultBox = document.getElementById("resultBox");
+      const qrcodeContainer = document.getElementById("qrcode");
 
-    shortenBtn.innerText = "Shortening...";
-    shortenBtn.disabled = true;
+      // Set URLs
+      shortUrlLink.href = url;
+      shortUrlLink.innerText = url;
+      openBtn.href = url;
 
-    try {
-      // TinyURL direct POST API (No proxy required, handles large Google Drive links)
-      const response = await fetch("https://api.tinyurl.com/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          url: finalUrl,
-          domain: "tinyurl.com"
-        })
+      // Generate QR Code
+      qrcodeContainer.innerHTML = "";
+      qrCodeInstance = new QRCode(qrcodeContainer, {
+        text: url,
+        width: 130,
+        height: 130,
+        colorDark: "#1a202c",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
       });
 
-      if (!response.ok) {
-        // Fallback for direct plain text creation
-        const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
-        const fallbackUrl = await fallbackRes.text();
-        if (fallbackUrl && fallbackUrl.startsWith("http")) {
-          showResult(fallbackUrl);
-          return;
-        }
-        throw new Error("Unable to create short link");
-      }
-
-      const data = await response.json();
-      if (data.data && data.data.tiny_url) {
-        showResult(data.data.tiny_url);
-      } else {
-        throw new Error("Invalid response format");
-      }
-    } catch (err) {
-      // Final resilient fallback: clean.li / spoo.me API
-      try {
-        const altRes = await fetch("https://spoo.me/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-          },
-          body: `url=${encodeURIComponent(finalUrl)}`
-        });
-        const altData = await altRes.json();
-        if (altData.short_url) {
-          showResult(altData.short_url);
-          return;
-        }
-      } catch (e) {
-        // Continue to error display
-      }
-      showError("Link short nahi ho paya. URL check karein.");
-    } finally {
-      shortenBtn.innerText = "Shorten URL";
-      shortenBtn.disabled = false;
+      resultBox.style.display = "flex";
     }
-  }
 
-  function showResult(url) {
-    const shortUrlLink = document.getElementById("shortUrlLink");
-    const resultBox = document.getElementById("resultBox");
-    shortUrlLink.href = url;
-    shortUrlLink.innerText = url;
-    resultBox.style.display = "flex";
-  }
+    function copyLink() {
+      const shortUrl = document.getElementById("shortUrlLink").innerText;
+      const copyBtn = document.getElementById("copyBtn");
 
-  function copyLink() {
-    const shortUrl = document.getElementById("shortUrlLink").innerText;
-    const copyBtn = document.getElementById("copyBtn");
+      navigator.clipboard.writeText(shortUrl).then(() => {
+        copyBtn.innerText = "Copied! ✓";
+        copyBtn.style.background = "#2f855a";
 
-    navigator.clipboard.writeText(shortUrl).then(() => {
-      copyBtn.innerText = "Copied! ✓";
-      copyBtn.style.background = "#2f855a";
+        setTimeout(() => {
+          copyBtn.innerText = "Copy Link";
+          copyBtn.style.background = "#48bb78";
+        }, 2000);
+      });
+    }
 
-      setTimeout(() => {
-        copyBtn.innerText = "Copy";
-        copyBtn.style.background = "#48bb78";
-      }, 2000);
-    });
-  }
+    function showError(message) {
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.innerText = message;
+      errorMsg.style.display = "block";
+    }
 
-  function showError(message) {
-    const errorMsg = document.getElementById("errorMsg");
-    errorMsg.innerText = message;
-    errorMsg.style.display = "block";
-  }
-</script>
+    // Local Storage History Handlers
+    function saveToHistory(url) {
+      let history = JSON.parse(localStorage.getItem("shortened_urls") || "[]");
+      if (!history.includes(url)) {
+        history.unshift(url);
+        if (history.length > 5) history.pop(); // Sirf last 5 links rakhein
+        localStorage.setItem("shortened_urls", JSON.stringify(history));
+      }
+      renderHistory();
+    }
 
+    function renderHistory() {
+      const historyBox = document.getElementById("historyBox");
+      const historyList = document.getElementById("historyList");
+      const history = JSON.parse(localStorage.getItem("shortened_urls") || "[]");
+
+      if (history.length === 0) {
+        historyBox.style.display = "none";
+        return;
+      }
+
+      historyBox.style.display = "block";
+      historyList.innerHTML = history
+        .map(
+          item => `
+          <li class="history-item">
+            <a href="${item}" target="_blank">${item}</a>
+          </li>`
+        )
+        .join("");
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("shortened_urls");
+      renderHistory();
+    }
+  </script>
 </body>
-  </html>
-  
+</html>
