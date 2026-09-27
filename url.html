@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quick URL Shortener & Flashcard QR</title>
-  <!-- Fast & High Quality QR Engine -->
+  <title>URL Shortener & Aesthetic Flashcard QR</title>
+  <!-- QR Generator Engine -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <!-- Google Font for Aesthetic Script Heading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Poppins', sans-serif;
     }
 
     body {
@@ -25,8 +30,8 @@
 
     .container {
       background: #ffffff;
-      padding: 30px 22px;
-      border-radius: 20px;
+      padding: 28px 22px;
+      border-radius: 24px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
       max-width: 440px;
       width: 100%;
@@ -35,7 +40,7 @@
 
     h2 {
       color: #2d3748;
-      font-size: 24px;
+      font-size: 22px;
       margin-bottom: 6px;
     }
 
@@ -100,7 +105,8 @@
     }
 
     .short-url-pill {
-      background: #edf2f7;
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
       padding: 10px 14px;
       border-radius: 10px;
       width: 100%;
@@ -142,73 +148,29 @@
     .open-btn { background: #3182ce; color: white; }
     .open-btn:hover { background: #2b6cb0; }
 
-    .download-btn { background: #805ad5; color: white; }
-    .download-btn:hover { background: #6b46c1; }
+    .download-btn { background: #c57d87; color: white; }
+    .download-btn:hover { background: #b06973; }
 
-    .share-btn { background: #dd6b20; color: white; }
-    .share-btn:hover { background: #c05621; }
+    .share-btn { background: #4a5568; color: white; }
+    .share-btn:hover { background: #2d3748; }
 
-    /* Flashcard Design */
-    .qr-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+    /* Aesthetic Card Preview on Page */
+    .card-preview-wrapper {
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.15));
+      margin-top: 8px;
+    }
+
+    #cardCanvas {
+      width: 260px;
+      height: 440px;
       border-radius: 18px;
-      padding: 18px 16px;
-      width: 250px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-    }
-
-    .qr-card-header {
-      font-size: 15px;
-      font-weight: 700;
-      color: #2d3748;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .qr-card-header::before,
-    .qr-card-header::after {
-      content: "•";
-      color: #667eea;
-      font-size: 18px;
-    }
-
-    .qr-frame {
-      background: #ffffff;
-      padding: 12px;
-      border-radius: 12px;
-      border: 2px dashed #cbd5e0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .qr-frame canvas {
       display: block;
-      border-radius: 4px;
-    }
-
-    .qr-tagline {
-      margin-top: 10px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #a0aec0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
     }
 
     .error-msg {
       color: #e53e3e;
       font-size: 13px;
-      margin-top: 12px;
+      margin-top: 10px;
       display: none;
     }
 
@@ -273,7 +235,7 @@
 
   <div class="container">
     <h2>URL Shortener</h2>
-    <p class="subtitle">Lamba link daalo, short link aur Flashcard QR pao</p>
+    <p class="subtitle">Lamba link daalo, aesthetic flashcard QR pao</p>
 
     <div class="input-box">
       <input type="url" id="longUrl" placeholder="https://example.com/long-url" required />
@@ -290,19 +252,15 @@
       </div>
 
       <div class="action-buttons">
-        <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">📋 Copy</button>
+        <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">📋 Copy Link</button>
         <a href="#" target="_blank" class="btn open-btn" id="openBtn">↗ Open</a>
-        <button class="btn download-btn" onclick="downloadQRCard()">⬇ Download</button>
-        <button class="btn share-btn" onclick="shareQRCard()">🔗 Share</button>
+        <button class="btn download-btn" onclick="downloadFlashCard()">⬇ Download Card</button>
+        <button class="btn share-btn" onclick="shareFlashCard()">🔗 Share Card</button>
       </div>
 
-      <!-- Flashcard Format QR Code -->
-      <div class="qr-card" id="qrFlashcard">
-        <div class="qr-card-header">My QR</div>
-        <div class="qr-frame">
-          <canvas id="qrCanvas"></canvas>
-        </div>
-        <div class="qr-tagline">Scan Me</div>
+      <!-- Flashcard Rendered on High-Res Canvas -->
+      <div class="card-preview-wrapper">
+        <canvas id="cardCanvas"></canvas>
       </div>
 
     </div>
@@ -320,7 +278,10 @@
   <script>
     let currentShortUrl = "";
 
-    window.onload = renderHistory;
+    window.onload = () => {
+      // Ensure custom font is ready before draw
+      document.fonts.ready.then(() => renderHistory());
+    };
 
     async function shortenUrl() {
       const urlInput = document.getElementById("longUrl");
@@ -392,83 +353,163 @@
       }
     }
 
-    function displayAll(url) {
+    async function displayAll(url) {
       currentShortUrl = url;
       document.getElementById("shortUrlLink").href = url;
       document.getElementById("shortUrlLink").innerText = url;
       document.getElementById("openBtn").href = url;
 
-      // Draw high-readability QR code with safe margins (Lens Scannable)
-      renderCleanQR(url);
+      // Draw the aesthetic Flashcard
+      await drawAestheticFlashCard(url);
 
       document.getElementById("resultBox").style.display = "flex";
       saveToHistory(url);
     }
 
-    // High scannability canvas renderer
-    function renderCleanQR(text) {
-      const qr = qrcode(0, 'M'); // M level is optimal for fast mobile scanning
-      qr.addData(text);
-      qr.make();
+    // Canvas drawing for the Flashcard (High Resolution 2x)
+    function drawAestheticFlashCard(url) {
+      return new Promise((resolve) => {
+        const canvas = document.getElementById("cardCanvas");
+        const ctx = canvas.getContext("2d");
 
-      const canvas = document.getElementById("qrCanvas");
-      const ctx = canvas.getContext("2d");
-      
-      const moduleCount = qr.getModuleCount();
-      const cellSize = 5; 
-      const margin = 4; // Crucial for Google Lens to detect corner anchors
-      const size = (moduleCount + 2 * margin) * cellSize;
+        // High resolution for crisp download
+        const W = 600;
+        const H = 1000;
+        canvas.width = W;
+        canvas.height = H;
 
-      canvas.width = size;
-      canvas.height = size;
+        // 1. Card Background (Dusty Rose / Aesthetic Mauve)
+        ctx.fillStyle = "#cb898f";
+        roundRect(ctx, 0, 0, W, H, 40, true, false);
 
-      // Pure white quiet background
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, size, size);
+        // 2. Stylish Script Title "My QR"
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.font = "bold 96px 'Caveat', cursive, sans-serif";
+        ctx.fillText("My QR", W / 2, 170);
 
-      // Black modules
-      ctx.fillStyle = "#000000";
-      for (let r = 0; r < moduleCount; r++) {
-        for (let c = 0; c < moduleCount; c++) {
-          if (qr.isDark(r, c)) {
-            ctx.fillRect((c + margin) * cellSize, (r + margin) * cellSize, cellSize, cellSize);
+        // 3. Subtext
+        ctx.font = "500 24px 'Poppins', sans-serif";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.fillText("SCAN TO OPEN", W / 2, 230);
+
+        // 4. Hand-drawn Cute Heart Doodle (Right side)
+        drawHeart(ctx, W / 2 + 160, 240, 28);
+
+        // 5. White Rounded Backplate for 100% Guaranteed Lens Readability
+        const plateSize = 440;
+        const plateX = (W - plateSize) / 2;
+        const plateY = 280;
+        ctx.fillStyle = "#ffffff";
+        roundRect(ctx, plateX, plateY, plateSize, plateSize, 26, true, false);
+
+        // 6. Generate Clean QR Inside Plate
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+
+        const moduleCount = qr.getModuleCount();
+        const qrMargin = 2;
+        const qrInnerSize = plateSize - 44; // 22px padding on all sides
+        const cellSize = qrInnerSize / (moduleCount + qrMargin * 2);
+        const startX = plateX + 22 + (qrMargin * cellSize);
+        const startY = plateY + 22 + (qrMargin * cellSize);
+
+        ctx.fillStyle = "#1a1a1a";
+        for (let r = 0; r < moduleCount; r++) {
+          for (let c = 0; c < moduleCount; c++) {
+            if (qr.isDark(r, c)) {
+              ctx.fillRect(startX + c * cellSize, startY + r * cellSize, cellSize + 0.3, cellSize + 0.3);
+            }
           }
         }
-      }
-    }
 
-    function copyLink() {
-      if (!currentShortUrl) return;
-      const copyBtn = document.getElementById("copyBtn");
-      navigator.clipboard.writeText(currentShortUrl).then(() => {
-        copyBtn.innerText = "Copied! ✓";
-        setTimeout(() => copyBtn.innerText = "📋 Copy", 2000);
+        // 7. Footer Branding & Decorative Icons
+        drawFooterIcons(ctx, W / 2, 790);
+
+        resolve();
       });
     }
 
-    // Download QR Flashcard image
-    function downloadQRCard() {
-      const canvas = document.getElementById("qrCanvas");
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
-      a.download = "My-QR.png";
-      a.click();
+    // Helper: Rounded Rectangle
+    function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
     }
 
-    // Native Share
-    async function shareQRCard() {
+    // Helper: Aesthetic Hand-drawn Style Heart
+    function drawHeart(ctx, x, y, size) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.translate(x, y);
+      ctx.rotate(-0.15);
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-size / 2, -size / 2, -size, size / 3, 0, size);
+      ctx.bezierCurveTo(size, size / 3, size / 2, -size / 2, 0, 0);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Helper: Flashcard Bottom details
+    function drawFooterIcons(ctx, x, y) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "600 24px 'Poppins', sans-serif";
+      ctx.fillText("SHARE & CONNECT", x, y);
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.font = "400 19px 'Poppins', sans-serif";
+      ctx.fillText("Point your camera to scan instantly", x, y + 40);
+
+      // Cute dash border accent
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.moveTo(x - 140, y + 80);
+      ctx.lineTo(x + 140, y + 80);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 1. Download Full Flashcard
+    function downloadFlashCard() {
+      const canvas = document.getElementById("cardCanvas");
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "My-QR-Flashcard.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // 2. Share Full Flashcard
+    async function shareFlashCard() {
       if (!currentShortUrl) return;
-      const canvas = document.getElementById("qrCanvas");
+      const canvas = document.getElementById("cardCanvas");
 
       if (navigator.share) {
         try {
           canvas.toBlob(async (blob) => {
-            const file = new File([blob], "My-QR.png", { type: "image/png" });
+            const file = new File([blob], "My-QR-Flashcard.png", { type: "image/png" });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({
-                title: "My QR",
-                text: `Scan QR or open link: ${currentShortUrl}`,
-                url: currentShortUrl,
+                title: "My QR Flashcard",
+                text: `Scan my QR code or visit: ${currentShortUrl}`,
                 files: [file]
               });
             } else {
@@ -486,6 +527,15 @@
         copyLink();
         alert("Link copy ho gaya hai!");
       }
+    }
+
+    function copyLink() {
+      if (!currentShortUrl) return;
+      const copyBtn = document.getElementById("copyBtn");
+      navigator.clipboard.writeText(currentShortUrl).then(() => {
+        copyBtn.innerText = "Copied! ✓";
+        setTimeout(() => copyBtn.innerText = "📋 Copy Link", 2000);
+      });
     }
 
     function showError(msg) {
