@@ -154,7 +154,7 @@
     </div>
   </div>
 
- <script>
+<script>
   async function shortenUrl() {
     const urlInput = document.getElementById("longUrl");
     const shortenBtn = document.getElementById("shortenBtn");
@@ -182,19 +182,25 @@
     shortenBtn.disabled = true;
 
     try {
-      const apiUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(finalUrl)}`;
-      const response = await fetch(apiUrl);
-      const data = await response.json();
+      // TinyURL via CORS Proxy to prevent GitHub Pages blocking
+      const targetApi = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetApi)}`;
 
-      if (data.shorturl) {
-        shortUrlLink.href = data.shorturl;
-        shortUrlLink.innerText = data.shorturl;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Network issue");
+
+      const data = await response.json();
+      const shortUrl = data.contents;
+
+      if (shortUrl && shortUrl.startsWith("http")) {
+        shortUrlLink.href = shortUrl;
+        shortUrlLink.innerText = shortUrl;
         resultBox.style.display = "flex";
       } else {
-        throw new Error(data.errormessage || "Error creating short URL");
+        throw new Error("Short link generate nahi ho paya.");
       }
     } catch (err) {
-      showError("Link short karne me dikkat aayi. Ek baar URL check karein.");
+      showError("Dikkat aayi: " + (err.message || "Failed to fetch"));
     } finally {
       shortenBtn.innerText = "Shorten URL";
       shortenBtn.disabled = false;
