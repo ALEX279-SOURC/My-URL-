@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quick URL Shortener & QR</title>
-  <!-- QR Code Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <title>Quick URL Shortener & Flashcard QR</title>
+  <!-- Fast & High Quality QR Engine -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -25,36 +25,37 @@
 
     .container {
       background: #ffffff;
-      padding: 30px 24px;
-      border-radius: 16px;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-      max-width: 480px;
+      padding: 30px 22px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+      max-width: 440px;
       width: 100%;
       text-align: center;
     }
 
     h2 {
       color: #2d3748;
+      font-size: 24px;
       margin-bottom: 6px;
     }
 
     p.subtitle {
       color: #718096;
-      font-size: 14px;
-      margin-bottom: 22px;
+      font-size: 13px;
+      margin-bottom: 20px;
     }
 
     .input-box {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     input[type="url"] {
       width: 100%;
       padding: 13px 15px;
       border: 2px solid #e2e8f0;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 14px;
       outline: none;
       transition: border-color 0.2s;
@@ -69,7 +70,7 @@
       background: #667eea;
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
@@ -92,22 +93,25 @@
     /* Result Box */
     .result-box {
       margin-top: 22px;
-      padding: 18px;
-      background: #f7fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
       display: none;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
-    .short-url-text {
-      color: #2b6cb0;
-      font-weight: 600;
-      font-size: 15px;
-      text-decoration: none;
+    .short-url-pill {
+      background: #edf2f7;
+      padding: 10px 14px;
+      border-radius: 10px;
+      width: 100%;
       word-break: break-all;
+    }
+
+    .short-url-pill a {
+      color: #3182ce;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 14px;
     }
 
     .action-buttons {
@@ -119,64 +123,86 @@
     }
 
     .btn {
-      padding: 8px 12px;
+      padding: 8px 13px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
-      transition: background 0.2s, transform 0.1s;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 5px;
+      transition: all 0.2s ease;
     }
 
-    .btn:active {
-      transform: scale(0.96);
-    }
+    .copy-btn { background: #38a169; color: white; }
+    .copy-btn:hover { background: #2f855a; }
 
-    .copy-btn {
-      background: #48bb78;
-      color: white;
-    }
-    .copy-btn:hover {
-      background: #38a169;
-    }
+    .open-btn { background: #3182ce; color: white; }
+    .open-btn:hover { background: #2b6cb0; }
 
-    .open-btn {
-      background: #3182ce;
-      color: white;
-    }
-    .open-btn:hover {
-      background: #2b6cb0;
-    }
+    .download-btn { background: #805ad5; color: white; }
+    .download-btn:hover { background: #6b46c1; }
 
-    .download-btn {
-      background: #805ad5;
-      color: white;
-    }
-    .download-btn:hover {
-      background: #6b46c1;
-    }
+    .share-btn { background: #dd6b20; color: white; }
+    .share-btn:hover { background: #c05621; }
 
-    .share-btn {
-      background: #ed8936;
-      color: white;
-    }
-    .share-btn:hover {
-      background: #dd6b20;
-    }
-
-    /* QR Section */
-    #qrcode {
-      padding: 10px;
+    /* Flashcard Design */
+    .qr-card {
       background: #ffffff;
-      border-radius: 8px;
       border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 18px 16px;
+      width: 250px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .qr-card-header {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2d3748;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qr-card-header::before,
+    .qr-card-header::after {
+      content: "•";
+      color: #667eea;
+      font-size: 18px;
+    }
+
+    .qr-frame {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
+      border: 2px dashed #cbd5e0;
       display: flex;
       justify-content: center;
+      align-items: center;
+    }
+
+    .qr-frame canvas {
+      display: block;
+      border-radius: 4px;
+    }
+
+    .qr-tagline {
+      margin-top: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #a0aec0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .error-msg {
@@ -186,7 +212,7 @@
       display: none;
     }
 
-    /* History Section */
+    /* History */
     .history-box {
       margin-top: 24px;
       text-align: left;
@@ -203,9 +229,8 @@
     }
 
     .history-header h4 {
-      font-size: 13px;
+      font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       color: #718096;
     }
 
@@ -219,34 +244,28 @@
 
     .history-list {
       list-style: none;
-      max-height: 140px;
+      max-height: 120px;
       overflow-y: auto;
-      padding-right: 4px;
     }
 
     .history-item {
       padding: 8px 10px;
       background: #f7fafc;
-      border-radius: 6px;
+      border-radius: 8px;
       margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .history-item a {
       color: #4a5568;
       text-decoration: none;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 280px;
     }
 
     .history-item a:hover {
       color: #667eea;
-      text-decoration: underline;
     }
   </style>
 </head>
@@ -254,33 +273,41 @@
 
   <div class="container">
     <h2>URL Shortener</h2>
-    <p class="subtitle">Lamba link daalo, short link aur QR Code pao</p>
+    <p class="subtitle">Lamba link daalo, short link aur Flashcard QR pao</p>
 
     <div class="input-box">
-      <input type="url" id="longUrl" placeholder="https://example.com/bahut-bada-link" required />
+      <input type="url" id="longUrl" placeholder="https://example.com/long-url" required />
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
     </div>
 
-    <!-- Error message -->
     <div class="error-msg" id="errorMsg"></div>
 
-    <!-- Result Box -->
+    <!-- Result -->
     <div class="result-box" id="resultBox">
-      <a href="#" target="_blank" class="short-url-text" id="shortUrlLink"></a>
       
-      <!-- Action Buttons -->
+      <div class="short-url-pill">
+        <a href="#" target="_blank" id="shortUrlLink"></a>
+      </div>
+
       <div class="action-buttons">
         <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">📋 Copy</button>
         <a href="#" target="_blank" class="btn open-btn" id="openBtn">↗ Open</a>
-        <button class="btn download-btn" id="downloadBtn" onclick="downloadQRCode()">⬇ Download QR</button>
-        <button class="btn share-btn" id="shareBtn" onclick="shareQRCode()">🔗 Share</button>
+        <button class="btn download-btn" onclick="downloadQRCard()">⬇ Download</button>
+        <button class="btn share-btn" onclick="shareQRCard()">🔗 Share</button>
       </div>
 
-      <!-- QR Code Output -->
-      <div id="qrcode"></div>
+      <!-- Flashcard Format QR Code -->
+      <div class="qr-card" id="qrFlashcard">
+        <div class="qr-card-header">My QR</div>
+        <div class="qr-frame">
+          <canvas id="qrCanvas"></canvas>
+        </div>
+        <div class="qr-tagline">Scan Me</div>
+      </div>
+
     </div>
 
-    <!-- Recent Links History -->
+    <!-- History -->
     <div class="history-box" id="historyBox">
       <div class="history-header">
         <h4>Recent Links</h4>
@@ -293,9 +320,7 @@
   <script>
     let currentShortUrl = "";
 
-    window.onload = function() {
-      renderHistory();
-    };
+    window.onload = renderHistory;
 
     async function shortenUrl() {
       const urlInput = document.getElementById("longUrl");
@@ -332,19 +357,17 @@
           const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
           const fallbackUrl = await fallbackRes.text();
           if (fallbackUrl && fallbackUrl.startsWith("http")) {
-            showResult(fallbackUrl);
-            saveToHistory(fallbackUrl);
+            displayAll(fallbackUrl);
             return;
           }
-          throw new Error("TinyURL plain text failed");
+          throw new Error();
         }
 
         const data = await response.json();
         if (data.data && data.data.tiny_url) {
-          showResult(data.data.tiny_url);
-          saveToHistory(data.data.tiny_url);
+          displayAll(data.data.tiny_url);
         } else {
-          throw new Error("Invalid response format");
+          throw new Error();
         }
       } catch (err) {
         try {
@@ -358,138 +381,119 @@
           });
           const altData = await altRes.json();
           if (altData.short_url) {
-            showResult(altData.short_url);
-            saveToHistory(altData.short_url);
+            displayAll(altData.short_url);
             return;
           }
-        } catch (e) {
-          // Fallback failed
-        }
-        showError("Link short nahi ho paya. URL ek baar check karein.");
+        } catch (e) {}
+        showError("Link short nahi ho paya. Ek baar URL check karein.");
       } finally {
         shortenBtn.innerText = "Shorten URL";
         shortenBtn.disabled = false;
       }
     }
 
-    function showResult(url) {
+    function displayAll(url) {
       currentShortUrl = url;
-      const shortUrlLink = document.getElementById("shortUrlLink");
-      const openBtn = document.getElementById("openBtn");
-      const resultBox = document.getElementById("resultBox");
-      const qrcodeContainer = document.getElementById("qrcode");
+      document.getElementById("shortUrlLink").href = url;
+      document.getElementById("shortUrlLink").innerText = url;
+      document.getElementById("openBtn").href = url;
 
-      shortUrlLink.href = url;
-      shortUrlLink.innerText = url;
-      openBtn.href = url;
+      // Draw high-readability QR code with safe margins (Lens Scannable)
+      renderCleanQR(url);
 
-      // Draw QR Code
-      qrcodeContainer.innerHTML = "";
-      new QRCode(qrcodeContainer, {
-        text: url,
-        width: 140,
-        height: 140,
-        colorDark: "#1a202c",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
+      document.getElementById("resultBox").style.display = "flex";
+      saveToHistory(url);
+    }
 
-      resultBox.style.display = "flex";
+    // High scannability canvas renderer
+    function renderCleanQR(text) {
+      const qr = qrcode(0, 'M'); // M level is optimal for fast mobile scanning
+      qr.addData(text);
+      qr.make();
+
+      const canvas = document.getElementById("qrCanvas");
+      const ctx = canvas.getContext("2d");
+      
+      const moduleCount = qr.getModuleCount();
+      const cellSize = 5; 
+      const margin = 4; // Crucial for Google Lens to detect corner anchors
+      const size = (moduleCount + 2 * margin) * cellSize;
+
+      canvas.width = size;
+      canvas.height = size;
+
+      // Pure white quiet background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
+
+      // Black modules
+      ctx.fillStyle = "#000000";
+      for (let r = 0; r < moduleCount; r++) {
+        for (let c = 0; c < moduleCount; c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect((c + margin) * cellSize, (r + margin) * cellSize, cellSize, cellSize);
+          }
+        }
+      }
     }
 
     function copyLink() {
       if (!currentShortUrl) return;
       const copyBtn = document.getElementById("copyBtn");
-
       navigator.clipboard.writeText(currentShortUrl).then(() => {
         copyBtn.innerText = "Copied! ✓";
-        copyBtn.style.background = "#2f855a";
-
-        setTimeout(() => {
-          copyBtn.innerText = "📋 Copy";
-          copyBtn.style.background = "#48bb78";
-        }, 2000);
+        setTimeout(() => copyBtn.innerText = "📋 Copy", 2000);
       });
     }
 
-    // Helper to extract image data from QR container
-    function getQrImageDataUrl() {
-      const img = document.querySelector("#qrcode img");
-      if (img && img.src && img.src.startsWith("data:image")) {
-        return img.src;
-      }
-      const canvas = document.querySelector("#qrcode canvas");
-      if (canvas) {
-        return canvas.toDataURL("image/png");
-      }
-      return null;
-    }
-
-    // 1. Download QR Code
-    function downloadQRCode() {
-      const dataUrl = getQrImageDataUrl();
-      if (!dataUrl) {
-        showError("QR code taiyar hone me samay lag raha hai. Ek second baad download karein.");
-        return;
-      }
+    // Download QR Flashcard image
+    function downloadQRCard() {
+      const canvas = document.getElementById("qrCanvas");
       const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "qrcode.png";
-      document.body.appendChild(a);
+      a.href = canvas.toDataURL("image/png");
+      a.download = "My-QR.png";
       a.click();
-      document.body.removeChild(a);
     }
 
-    // 2. Share QR & Link
-    async function shareQRCode() {
+    // Native Share
+    async function shareQRCard() {
       if (!currentShortUrl) return;
-
-      const dataUrl = getQrImageDataUrl();
+      const canvas = document.getElementById("qrCanvas");
 
       if (navigator.share) {
         try {
-          if (dataUrl) {
-            // Blob conversion for direct image sharing
-            const res = await fetch(dataUrl);
-            const blob = await res.blob();
-            const file = new File([blob], "qrcode.png", { type: "image/png" });
-
+          canvas.toBlob(async (blob) => {
+            const file = new File([blob], "My-QR.png", { type: "image/png" });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({
-                title: "Shortened Link & QR Code",
-                text: `Yeh raha aapka short link: ${currentShortUrl}`,
+                title: "My QR",
+                text: `Scan QR or open link: ${currentShortUrl}`,
                 url: currentShortUrl,
                 files: [file]
               });
-              return;
+            } else {
+              await navigator.share({
+                title: "My QR",
+                text: currentShortUrl,
+                url: currentShortUrl
+              });
             }
-          }
-
-          // Fallback share if file sharing is not supported by device
-          await navigator.share({
-            title: "Shortened Link",
-            text: `Yeh raha aapka link: ${currentShortUrl}`,
-            url: currentShortUrl
           });
-        } catch (err) {
-          if (err.name !== "AbortError") {
-            copyLink();
-          }
+        } catch (e) {
+          copyLink();
         }
       } else {
-        // Fallback for non-supported browsers
         copyLink();
-        alert("Aapka link copy ho gaya hai! Aap ise direct paste karke share kar sakte hain.");
+        alert("Link copy ho gaya hai!");
       }
     }
 
-    function showError(message) {
+    function showError(msg) {
       const errorMsg = document.getElementById("errorMsg");
-      errorMsg.innerText = message;
+      errorMsg.innerText = msg;
       errorMsg.style.display = "block";
     }
 
-    // Local Storage History Handlers
     function saveToHistory(url) {
       let history = JSON.parse(localStorage.getItem("shortened_urls") || "[]");
       if (!history.includes(url)) {
@@ -511,14 +515,11 @@
       }
 
       historyBox.style.display = "block";
-      historyList.innerHTML = history
-        .map(
-          item => `
-          <li class="history-item">
-            <a href="${item}" target="_blank">${item}</a>
-          </li>`
-        )
-        .join("");
+      historyList.innerHTML = history.map(u => `
+        <li class="history-item">
+          <a href="${u}" target="_blank">${u}</a>
+        </li>
+      `).join("");
     }
 
     function clearHistory() {
