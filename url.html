@@ -182,25 +182,25 @@
     shortenBtn.disabled = true;
 
     try {
-      // TinyURL via CORS Proxy to prevent GitHub Pages blocking
-      const targetApi = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetApi)}`;
+      // Direct 301 instant redirect (bina kisi interstitial/preview page ke)
+      const apiUrl = `https://ulvis.net/api.php?url=${encodeURIComponent(finalUrl)}&private=1`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
 
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error("Network issue");
 
       const data = await response.json();
-      const shortUrl = data.contents;
+      const shortUrl = data.contents.trim();
 
       if (shortUrl && shortUrl.startsWith("http")) {
         shortUrlLink.href = shortUrl;
         shortUrlLink.innerText = shortUrl;
         resultBox.style.display = "flex";
       } else {
-        throw new Error("Short link generate nahi ho paya.");
+        throw new Error("Short link nahi ban paya");
       }
     } catch (err) {
-      showError("Dikkat aayi: " + (err.message || "Failed to fetch"));
+      showError("Dikkat aayi, kripya dobara koshish karein.");
     } finally {
       shortenBtn.innerText = "Shorten URL";
       shortenBtn.disabled = false;
