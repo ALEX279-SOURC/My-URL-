@@ -92,7 +92,7 @@
     /* Result Box */
     .result-box {
       margin-top: 22px;
-      padding: 16px;
+      padding: 18px;
       background: #f7fafc;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
@@ -119,17 +119,22 @@
     }
 
     .btn {
-      padding: 8px 14px;
+      padding: 8px 12px;
       border: none;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 5px;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
     }
 
     .copy-btn {
@@ -146,6 +151,22 @@
     }
     .open-btn:hover {
       background: #2b6cb0;
+    }
+
+    .download-btn {
+      background: #805ad5;
+      color: white;
+    }
+    .download-btn:hover {
+      background: #6b46c1;
+    }
+
+    .share-btn {
+      background: #ed8936;
+      color: white;
+    }
+    .share-btn:hover {
+      background: #dd6b20;
     }
 
     /* QR Section */
@@ -249,8 +270,10 @@
       
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>
-        <a href="#" target="_blank" class="btn open-btn" id="openBtn">Open in Browser ↗</a>
+        <button class="btn copy-btn" id="copyBtn" onclick="copyLink()">📋 Copy</button>
+        <a href="#" target="_blank" class="btn open-btn" id="openBtn">↗ Open</a>
+        <button class="btn download-btn" id="downloadBtn" onclick="downloadQRCode()">⬇ Download QR</button>
+        <button class="btn share-btn" id="shareBtn" onclick="shareQRCode()">🔗 Share</button>
       </div>
 
       <!-- QR Code Output -->
@@ -268,9 +291,8 @@
   </div>
 
   <script>
-    let qrCodeInstance = null;
+    let currentShortUrl = "";
 
-    // Load history when page opens
     window.onload = function() {
       renderHistory();
     };
@@ -351,43 +373,114 @@
     }
 
     function showResult(url) {
+      currentShortUrl = url;
       const shortUrlLink = document.getElementById("shortUrlLink");
       const openBtn = document.getElementById("openBtn");
       const resultBox = document.getElementById("resultBox");
       const qrcodeContainer = document.getElementById("qrcode");
 
-      // Set URLs
       shortUrlLink.href = url;
       shortUrlLink.innerText = url;
       openBtn.href = url;
 
-      // Generate QR Code
+      // Draw QR Code
       qrcodeContainer.innerHTML = "";
-      qrCodeInstance = new QRCode(qrcodeContainer, {
+      new QRCode(qrcodeContainer, {
         text: url,
-        width: 130,
-        height: 130,
+        width: 140,
+        height: 140,
         colorDark: "#1a202c",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
+        correctLevel: QRCode.CorrectLevel.H
       });
 
       resultBox.style.display = "flex";
     }
 
     function copyLink() {
-      const shortUrl = document.getElementById("shortUrlLink").innerText;
+      if (!currentShortUrl) return;
       const copyBtn = document.getElementById("copyBtn");
 
-      navigator.clipboard.writeText(shortUrl).then(() => {
+      navigator.clipboard.writeText(currentShortUrl).then(() => {
         copyBtn.innerText = "Copied! ✓";
         copyBtn.style.background = "#2f855a";
 
         setTimeout(() => {
-          copyBtn.innerText = "Copy Link";
+          copyBtn.innerText = "📋 Copy";
           copyBtn.style.background = "#48bb78";
         }, 2000);
       });
+    }
+
+    // Helper to extract image data from QR container
+    function getQrImageDataUrl() {
+      const img = document.querySelector("#qrcode img");
+      if (img && img.src && img.src.startsWith("data:image")) {
+        return img.src;
+      }
+      const canvas = document.querySelector("#qrcode canvas");
+      if (canvas) {
+        return canvas.toDataURL("image/png");
+      }
+      return null;
+    }
+
+    // 1. Download QR Code
+    function downloadQRCode() {
+      const dataUrl = getQrImageDataUrl();
+      if (!dataUrl) {
+        showError("QR code taiyar hone me samay lag raha hai. Ek second baad download karein.");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "qrcode.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // 2. Share QR & Link
+    async function shareQRCode() {
+      if (!currentShortUrl) return;
+
+      const dataUrl = getQrImageDataUrl();
+
+      if (navigator.share) {
+        try {
+          if (dataUrl) {
+            // Blob conversion for direct image sharing
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], "qrcode.png", { type: "image/png" });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: "Shortened Link & QR Code",
+                text: `Yeh raha aapka short link: ${currentShortUrl}`,
+                url: currentShortUrl,
+                files: [file]
+              });
+              return;
+            }
+          }
+
+          // Fallback share if file sharing is not supported by device
+          await navigator.share({
+            title: "Shortened Link",
+            text: `Yeh raha aapka link: ${currentShortUrl}`,
+            url: currentShortUrl
+          });
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            copyLink();
+          }
+        }
+      } else {
+        // Fallback for non-supported browsers
+        copyLink();
+        alert("Aapka link copy ho gaya hai! Aap ise direct paste karke share kar sakte hain.");
+      }
     }
 
     function showError(message) {
@@ -401,7 +494,7 @@
       let history = JSON.parse(localStorage.getItem("shortened_urls") || "[]");
       if (!history.includes(url)) {
         history.unshift(url);
-        if (history.length > 5) history.pop(); // Sirf last 5 links rakhein
+        if (history.length > 5) history.pop();
         localStorage.setItem("shortened_urls", JSON.stringify(history));
       }
       renderHistory();
