@@ -164,7 +164,6 @@
 
     const longUrl = urlInput.value.trim();
 
-    // Reset UI
     errorMsg.style.display = "none";
     resultBox.style.display = "none";
 
@@ -182,29 +181,67 @@
     shortenBtn.disabled = true;
 
     try {
-      // Direct 301 instant redirect (bina kisi interstitial/preview page ke)
-      const apiUrl = `https://ulvis.net/api.php?url=${encodeURIComponent(finalUrl)}&private=1`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
+      // TinyURL direct POST API (No proxy required, handles large Google Drive links)
+      const response = await fetch("https://api.tinyurl.com/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          url: finalUrl,
+          domain: "tinyurl.com"
+        })
+      });
 
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("Network issue");
+      if (!response.ok) {
+        // Fallback for direct plain text creation
+        const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
+        const fallbackUrl = await fallbackRes.text();
+        if (fallbackUrl && fallbackUrl.startsWith("http")) {
+          showResult(fallbackUrl);
+          return;
+        }
+        throw new Error("Unable to create short link");
+      }
 
       const data = await response.json();
-      const shortUrl = data.contents.trim();
-
-      if (shortUrl && shortUrl.startsWith("http")) {
-        shortUrlLink.href = shortUrl;
-        shortUrlLink.innerText = shortUrl;
-        resultBox.style.display = "flex";
+      if (data.data && data.data.tiny_url) {
+        showResult(data.data.tiny_url);
       } else {
-        throw new Error("Short link nahi ban paya");
+        throw new Error("Invalid response format");
       }
     } catch (err) {
-      showError("Dikkat aayi, kripya dobara koshish karein.");
+      // Final resilient fallback: clean.li / spoo.me API
+      try {
+        const altRes = await fetch("https://spoo.me/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"
+          },
+          body: `url=${encodeURIComponent(finalUrl)}`
+        });
+        const altData = await altRes.json();
+        if (altData.short_url) {
+          showResult(altData.short_url);
+          return;
+        }
+      } catch (e) {
+        // Continue to error display
+      }
+      showError("Link short nahi ho paya. URL check karein.");
     } finally {
       shortenBtn.innerText = "Shorten URL";
       shortenBtn.disabled = false;
     }
+  }
+
+  function showResult(url) {
+    const shortUrlLink = document.getElementById("shortUrlLink");
+    const resultBox = document.getElementById("resultBox");
+    shortUrlLink.href = url;
+    shortUrlLink.innerText = url;
+    resultBox.style.display = "flex";
   }
 
   function copyLink() {
