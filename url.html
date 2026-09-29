@@ -47,7 +47,7 @@
     p.subtitle {
       color: #718096;
       font-size: 13px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .input-box {
@@ -59,10 +59,10 @@
     input[type="url"],
     input[type="text"] {
       width: 100%;
-      padding: 13px 15px;
+      padding: 12px 14px;
       border: 2px solid #e2e8f0;
       border-radius: 12px;
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
       transition: border-color 0.2s;
     }
@@ -243,6 +243,9 @@
     <div class="input-box">
       <input type="url" id="longUrl" placeholder="Paste long URL (e.g. https://...)" required />
       <input type="text" id="customAlias" placeholder="Custom name e.g. ipchat (optional)" />
+      <!-- New QR Subtitle / Description Input -->
+      <input type="text" id="qrDesc" placeholder="QR Description e.g. @yourid or Project Notes (optional)" />
+      
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
     </div>
 
@@ -279,12 +282,12 @@
 
   <script>
     let currentShortUrl = "";
+    let currentDescText = "";
 
     window.onload = () => {
       document.fonts.ready.then(() => renderHistory());
     };
 
-    // Make sure link is ALWAYS https://
     function forceHttps(url) {
       if (!url) return "";
       let res = url.trim();
@@ -299,12 +302,14 @@
     async function shortenUrl() {
       const urlInput = document.getElementById("longUrl");
       const aliasInput = document.getElementById("customAlias");
+      const descInput = document.getElementById("qrDesc");
       const shortenBtn = document.getElementById("shortenBtn");
       const resultBox = document.getElementById("resultBox");
       const errorMsg = document.getElementById("errorMsg");
 
       const longUrl = urlInput.value.trim();
       const customAlias = aliasInput.value.trim().replace(/[^a-zA-Z0-9-_]/g, "");
+      currentDescText = descInput.value.trim();
 
       errorMsg.style.display = "none";
       resultBox.style.display = "none";
@@ -322,7 +327,7 @@
       try {
         let createdUrl = null;
 
-        // 1. Spoo.me API (Reliable CORS + Custom Alias support)
+        // 1. Spoo.me API (Reliable CORS + Alias)
         try {
           let formData = new URLSearchParams();
           formData.append("url", finalUrl);
@@ -346,13 +351,12 @@
             throw new Error(spooData.error);
           }
         } catch (e) {
-          // If custom alias already taken
           if (customAlias && e.message && e.message.toLowerCase().includes("alias")) {
             throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Dusra try karein.`);
           }
         }
 
-        // 2. Fallback to is.gd via CORS proxy if spoo was busy
+        // 2. Fallback to is.gd via CORS proxy
         if (!createdUrl) {
           let isGdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(finalUrl)}`;
           if (customAlias) {
@@ -390,13 +394,13 @@
       document.getElementById("shortUrlLink").innerText = currentShortUrl;
       document.getElementById("openBtn").href = currentShortUrl;
 
-      await drawAestheticFlashCard(currentShortUrl);
+      await drawAestheticFlashCard(currentShortUrl, currentDescText);
 
       document.getElementById("resultBox").style.display = "flex";
       saveToHistory(currentShortUrl);
     }
 
-    function drawAestheticFlashCard(url) {
+    function drawAestheticFlashCard(url, customDesc) {
       return new Promise((resolve) => {
         const canvas = document.getElementById("cardCanvas");
         const ctx = canvas.getContext("2d");
@@ -413,25 +417,48 @@
         // Stylish Title "My QR"
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
-        ctx.font = "bold 96px 'Caveat', cursive, sans-serif";
-        ctx.fillText("My QR", W / 2, 170);
+        ctx.font = "bold 92px 'Caveat', cursive, sans-serif";
+        ctx.fillText("My QR", W / 2, 145);
 
-        // Subtitle
-        ctx.font = "500 24px 'Poppins', sans-serif";
-        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-        ctx.fillText("SCAN TO OPEN", W / 2, 230);
+        // Subtitle "SCAN TO OPEN"
+        ctx.font = "600 22px 'Poppins', sans-serif";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.fillText("SCAN TO OPEN", W / 2, 195);
 
         // Heart doodle
-        drawHeart(ctx, W / 2 + 160, 240, 28);
+        drawHeart(ctx, W / 2 + 155, 210, 26);
+
+        // Custom Description text under SCAN TO OPEN (if provided)
+        let plateY = 275;
+        if (customDesc) {
+          ctx.font = "500 20px 'Poppins', sans-serif";
+          ctx.fillStyle = "#ffffff";
+          
+          // Truncate if user enters very long string
+          let displayText = customDesc.length > 30 ? customDesc.substring(0, 28) + "..." : customDesc;
+          
+          // Text pill background
+          const textMetrics = ctx.measureText(displayText);
+          const pillW = textMetrics.width + 30;
+          const pillH = 34;
+          const pillX = (W - pillW) / 2;
+          const pillY = 220;
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+          roundRect(ctx, pillX, pillY, pillW, pillH, 17, true, false);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(displayText, W / 2, pillY + 24);
+          plateY = 275;
+        }
 
         // White backplate for scanning
-        const plateSize = 440;
+        const plateSize = 430;
         const plateX = (W - plateSize) / 2;
-        const plateY = 280;
         ctx.fillStyle = "#ffffff";
         roundRect(ctx, plateX, plateY, plateSize, plateSize, 26, true, false);
 
-        // QR Code
+        // QR Code inside plate
         const qr = qrcode(0, 'M');
         qr.addData(url);
         qr.make();
@@ -453,7 +480,7 @@
         }
 
         // Footer
-        drawFooterIcons(ctx, W / 2, 790);
+        drawFooterIcons(ctx, W / 2, 785);
         resolve();
       });
     }
@@ -483,7 +510,7 @@
       ctx.bezierCurveTo(-size / 2, -size / 2, -size, size / 3, 0, size);
       ctx.bezierCurveTo(size, size / 3, size / 2, -size / 2, 0, 0);
       ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 3.5;
       ctx.lineCap = "round";
       ctx.stroke();
       ctx.restore();
@@ -496,15 +523,15 @@
       ctx.fillText("SHARE & CONNECT", x, y);
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-      ctx.font = "400 19px 'Poppins', sans-serif";
-      ctx.fillText("Point your camera to scan instantly", x, y + 40);
+      ctx.font = "400 18px 'Poppins', sans-serif";
+      ctx.fillText("Point your camera to scan instantly", x, y + 38);
 
       ctx.beginPath();
       ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 6]);
-      ctx.moveTo(x - 140, y + 80);
-      ctx.lineTo(x + 140, y + 80);
+      ctx.moveTo(x - 140, y + 78);
+      ctx.lineTo(x + 140, y + 78);
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -568,7 +595,6 @@
     function saveToHistory(url) {
       const secureUrl = forceHttps(url);
       let history = JSON.parse(localStorage.getItem("shortened_urls") || "[]");
-      // Clean previous non-https entries from storage
       history = history.map(item => forceHttps(item));
 
       if (!history.includes(secureUrl)) {
