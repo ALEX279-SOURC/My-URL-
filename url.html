@@ -53,10 +53,11 @@
     .input-box {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
-    input[type="url"] {
+    input[type="url"],
+    input[type="text"] {
       width: 100%;
       padding: 13px 15px;
       border: 2px solid #e2e8f0;
@@ -66,8 +67,28 @@
       transition: border-color 0.2s;
     }
 
-    input[type="url"]:focus {
+    input[type="url"]:focus,
+    input[type="text"]:focus {
       border-color: #667eea;
+    }
+
+    .alias-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .alias-prefix {
+      position: absolute;
+      left: 14px;
+      font-size: 13px;
+      color: #a0aec0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    input#customAlias {
+      padding-left: 105px;
     }
 
     button.shorten-btn {
@@ -154,7 +175,7 @@
     .share-btn { background: #4a5568; color: white; }
     .share-btn:hover { background: #2d3748; }
 
-    /* Aesthetic Card Preview on Page */
+    /* Aesthetic Card Preview */
     .card-preview-wrapper {
       filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.15));
       margin-top: 8px;
@@ -235,10 +256,17 @@
 
   <div class="container">
     <h2>URL Shortener</h2>
-    <p class="subtitle">Lamba link daalo, aesthetic flashcard QR pao</p>
+    <p class="subtitle">Lamba link daalo, custom short link aur Flashcard QR pao</p>
 
     <div class="input-box">
       <input type="url" id="longUrl" placeholder="https://example.com/long-url" required />
+      
+      <!-- Custom Alias Field (Optional) -->
+      <div class="alias-wrapper">
+        <span class="alias-prefix">tinyurl.com/</span>
+        <input type="text" id="customAlias" placeholder="custom-name (optional)" />
+      </div>
+
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
     </div>
 
@@ -279,17 +307,31 @@
     let currentShortUrl = "";
 
     window.onload = () => {
-      // Ensure custom font is ready before draw
       document.fonts.ready.then(() => renderHistory());
     };
 
+    // Strict HTTPS Enforcer
+    function ensureHttps(url) {
+      if (!url) return "";
+      let clean = url.trim();
+      if (clean.startsWith("http://")) {
+        clean = clean.replace("http://", "https://");
+      } else if (!clean.startsWith("https://")) {
+        clean = "https://" + clean;
+      }
+      return clean;
+    }
+
     async function shortenUrl() {
       const urlInput = document.getElementById("longUrl");
+      const aliasInput = document.getElementById("customAlias");
       const shortenBtn = document.getElementById("shortenBtn");
       const resultBox = document.getElementById("resultBox");
       const errorMsg = document.getElementById("errorMsg");
 
       const longUrl = urlInput.value.trim();
+      // Format alias: clean spaces and lowercase
+      const customAlias = aliasInput.value.trim().replace(/\s+/g, "-").toLowerCase();
 
       errorMsg.style.display = "none";
       resultBox.style.display = "none";
@@ -299,54 +341,73 @@
         return;
       }
 
-      let finalUrl = longUrl;
-      if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
-        finalUrl = "https://" + longUrl;
-      }
+      const finalUrl = ensureHttps(longUrl);
 
       shortenBtn.innerText = "Shortening...";
       shortenBtn.disabled = true;
 
       try {
+        // Build TinyURL payload (supports optional custom alias)
+        const requestPayload = {
+          url: finalUrl,
+          domain: "tinyurl.com"
+        };
+        if (customAlias) {
+          requestPayload.alias = customAlias;
+        }
+
         const response = await fetch("https://api.tinyurl.com/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: finalUrl, domain: "tinyurl.com" })
+          body: JSON.stringify(requestPayload)
         });
 
-        if (!response.ok) {
-          const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
-          const fallbackUrl = await fallbackRes.text();
-          if (fallbackUrl && fallbackUrl.startsWith("http")) {
-            displayAll(fallbackUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data.tiny_url) {
+            displayAll(ensureHttps(data.data.tiny_url));
             return;
           }
-          throw new Error();
         }
 
-        const data = await response.json();
-        if (data.data && data.data.tiny_url) {
-          displayAll(data.data.tiny_url);
+        // TinyURL GET endpoint fallback with alias
+        let aliasParam = customAlias ? `&alias=${encodeURIComponent(customAlias)}` : "";
+        const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}${aliasParam}`);
+        const fallbackUrl = (await fallbackRes.text()).trim();
+
+        if (fallbackUrl && fallbackUrl.startsWith("http")) {
+          displayAll(ensureHttps(fallbackUrl));
+          return;
+        }
+
+        if (customAlias) {
+          throw new Error("Yeh Custom Name ('" + customAlias + "') pehle se kisi ne le rakha hai. Kripya dusra naam try karein.");
         } else {
-          throw new Error();
+          throw new Error("Primary API issue");
         }
       } catch (err) {
-        try {
-          const altRes = await fetch("https://spoo.me/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "Accept": "application/json"
-            },
-            body: `url=${encodeURIComponent(finalUrl)}`
-          });
-          const altData = await altRes.json();
-          if (altData.short_url) {
-            displayAll(altData.short_url);
-            return;
-          }
-        } catch (e) {}
-        showError("Link short nahi ho paya. Ek baar URL check karein.");
+        // If user wanted an alias and it failed, respect the error
+        if (customAlias) {
+          showError(err.message || "Custom alias create nahi ho saka. Kripya dusra naam daalein.");
+        } else {
+          // Secondary fallback (spoo.me) for auto-generated links
+          try {
+            const altRes = await fetch("https://spoo.me/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json"
+              },
+              body: `url=${encodeURIComponent(finalUrl)}`
+            });
+            const altData = await altRes.json();
+            if (altData.short_url) {
+              displayAll(ensureHttps(altData.short_url));
+              return;
+            }
+          } catch (e) {}
+          showError("Link short nahi ho paya. URL ek baar check karein.");
+        }
       } finally {
         shortenBtn.innerText = "Shorten URL";
         shortenBtn.disabled = false;
@@ -354,63 +415,62 @@
     }
 
     async function displayAll(url) {
-      currentShortUrl = url;
-      document.getElementById("shortUrlLink").href = url;
-      document.getElementById("shortUrlLink").innerText = url;
-      document.getElementById("openBtn").href = url;
+      currentShortUrl = ensureHttps(url);
+      document.getElementById("shortUrlLink").href = currentShortUrl;
+      document.getElementById("shortUrlLink").innerText = currentShortUrl;
+      document.getElementById("openBtn").href = currentShortUrl;
 
-      // Draw the aesthetic Flashcard
-      await drawAestheticFlashCard(url);
+      // Draw aesthetic Flashcard
+      await drawAestheticFlashCard(currentShortUrl);
 
       document.getElementById("resultBox").style.display = "flex";
-      saveToHistory(url);
+      saveToHistory(currentShortUrl);
     }
 
-    // Canvas drawing for the Flashcard (High Resolution 2x)
+    // High Resolution Canvas Flashcard
     function drawAestheticFlashCard(url) {
       return new Promise((resolve) => {
         const canvas = document.getElementById("cardCanvas");
         const ctx = canvas.getContext("2d");
 
-        // High resolution for crisp download
         const W = 600;
         const H = 1000;
         canvas.width = W;
         canvas.height = H;
 
-        // 1. Card Background (Dusty Rose / Aesthetic Mauve)
+        // 1. Dusty Rose Card Background
         ctx.fillStyle = "#cb898f";
         roundRect(ctx, 0, 0, W, H, 40, true, false);
 
-        // 2. Stylish Script Title "My QR"
+        // 2. Handwriting Script Title "My QR"
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.font = "bold 96px 'Caveat', cursive, sans-serif";
         ctx.fillText("My QR", W / 2, 170);
 
-        // 3. Subtext
+        // 3. Subtitle
         ctx.font = "500 24px 'Poppins', sans-serif";
         ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
         ctx.fillText("SCAN TO OPEN", W / 2, 230);
 
-        // 4. Hand-drawn Cute Heart Doodle (Right side)
+        // 4. Heart Doodle
         drawHeart(ctx, W / 2 + 160, 240, 28);
 
-        // 5. White Rounded Backplate for 100% Guaranteed Lens Readability
+        // 5. White Rounded Backplate for fast Lens scanning
         const plateSize = 440;
         const plateX = (W - plateSize) / 2;
         const plateY = 280;
         ctx.fillStyle = "#ffffff";
         roundRect(ctx, plateX, plateY, plateSize, plateSize, 26, true, false);
 
-        // 6. Generate Clean QR Inside Plate
+        // 6. QR Code inside plate with HTTPS URL
         const qr = qrcode(0, 'M');
         qr.addData(url);
         qr.make();
 
         const moduleCount = qr.getModuleCount();
         const qrMargin = 2;
-        const qrInnerSize = plateSize - 44; // 22px padding on all sides
+        const qrInnerSize = plateSize - 44;
         const cellSize = qrInnerSize / (moduleCount + qrMargin * 2);
         const startX = plateX + 22 + (qrMargin * cellSize);
         const startY = plateY + 22 + (qrMargin * cellSize);
@@ -424,14 +484,13 @@
           }
         }
 
-        // 7. Footer Branding & Decorative Icons
+        // 7. Footer
         drawFooterIcons(ctx, W / 2, 790);
 
         resolve();
       });
     }
 
-    // Helper: Rounded Rectangle
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
       ctx.beginPath();
       ctx.moveTo(x + radius, y);
@@ -448,7 +507,6 @@
       if (stroke) ctx.stroke();
     }
 
-    // Helper: Aesthetic Hand-drawn Style Heart
     function drawHeart(ctx, x, y, size) {
       ctx.save();
       ctx.beginPath();
@@ -464,7 +522,6 @@
       ctx.restore();
     }
 
-    // Helper: Flashcard Bottom details
     function drawFooterIcons(ctx, x, y) {
       ctx.textAlign = "center";
       ctx.fillStyle = "#ffffff";
@@ -475,7 +532,6 @@
       ctx.font = "400 19px 'Poppins', sans-serif";
       ctx.fillText("Point your camera to scan instantly", x, y + 40);
 
-      // Cute dash border accent
       ctx.beginPath();
       ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
       ctx.lineWidth = 2;
@@ -486,7 +542,6 @@
       ctx.setLineDash([]);
     }
 
-    // 1. Download Full Flashcard
     function downloadFlashCard() {
       const canvas = document.getElementById("cardCanvas");
       const a = document.createElement("a");
@@ -497,7 +552,6 @@
       document.body.removeChild(a);
     }
 
-    // 2. Share Full Flashcard
     async function shareFlashCard() {
       if (!currentShortUrl) return;
       const canvas = document.getElementById("cardCanvas");
@@ -509,7 +563,7 @@
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({
                 title: "My QR Flashcard",
-                text: `Scan my QR code or visit: ${currentShortUrl}`,
+                text: `Scan QR or open: ${currentShortUrl}`,
                 files: [file]
               });
             } else {
