@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>URL Shortener & Aesthetic Flashcard QR</title>
-  <!-- Fast QR Code Library -->
+  <!-- Fast QR Code Generator Engine -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <!-- Google Aesthetic Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,7 +98,7 @@
       cursor: not-allowed;
     }
 
-    /* Result */
+    /* Result Box */
     .result-box {
       margin-top: 22px;
       display: none;
@@ -157,7 +157,7 @@
     .share-btn { background: #4a5568; color: white; }
     .share-btn:hover { background: #2d3748; }
 
-    /* Flashcard Preview */
+    /* Flashcard Preview on Screen */
     .card-preview-wrapper {
       filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.15));
       margin-top: 8px;
@@ -242,8 +242,7 @@
 
     <div class="input-box">
       <input type="url" id="longUrl" placeholder="Paste long URL (e.g. https://...)" required />
-      <input type="text" id="customAlias" placeholder="Custom name e.g. ipchat (optional)" />
-      <!-- New QR Subtitle / Description Input -->
+      <input type="text" id="customAlias" placeholder="Custom name e.g. ipchat-app (optional)" />
       <input type="text" id="qrDesc" placeholder="QR Description e.g. @yourid or Project Notes (optional)" />
       
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
@@ -251,7 +250,7 @@
 
     <div class="error-msg" id="errorMsg"></div>
 
-    <!-- Result -->
+    <!-- Result Box -->
     <div class="result-box" id="resultBox">
       <div class="short-url-pill">
         <a href="#" target="_blank" id="shortUrlLink"></a>
@@ -270,7 +269,7 @@
       </div>
     </div>
 
-    <!-- History -->
+    <!-- Recent Links History -->
     <div class="history-box" id="historyBox">
       <div class="history-header">
         <h4>Recent Links</h4>
@@ -327,61 +326,55 @@
       try {
         let createdUrl = null;
 
-        // 1. Spoo.me API (Reliable CORS + Alias)
+        // 1. Spoo.me Safe Call
+        let formData = new URLSearchParams();
+        formData.append("url", finalUrl);
+        if (customAlias) {
+          formData.append("alias", customAlias);
+        }
+
+        const spooRes = await fetch("https://spoo.me/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json"
+          },
+          body: formData.toString()
+        });
+
+        const responseText = await spooRes.text();
+        let spooData = null;
         try {
-          let formData = new URLSearchParams();
-          formData.append("url", finalUrl);
-          if (customAlias) {
-            formData.append("alias", customAlias);
-          }
-
-          const spooRes = await fetch("https://spoo.me/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "Accept": "application/json"
-            },
-            body: formData.toString()
-          });
-
-          const spooData = await spooRes.json();
-          if (spooData.short_url) {
-            createdUrl = forceHttps(spooData.short_url);
-          } else if (spooData.error) {
-            throw new Error(spooData.error);
-          }
+          spooData = JSON.parse(responseText);
         } catch (e) {
-          if (customAlias && e.message && e.message.toLowerCase().includes("alias")) {
-            throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Dusra try karein.`);
+          if (customAlias) {
+            throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Kripya naya naam try karein.`);
           }
         }
 
-        // 2. Fallback to is.gd via CORS proxy
-        if (!createdUrl) {
-          let isGdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(finalUrl)}`;
-          if (customAlias) {
-            isGdUrl += `&shorturl=${encodeURIComponent(customAlias)}`;
-          }
+        if (spooData && spooData.short_url) {
+          createdUrl = forceHttps(spooData.short_url);
+        } else if (spooData && spooData.error) {
+          throw new Error(spooData.error);
+        }
 
-          const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(isGdUrl)}`);
-          const data = await res.json();
-          const parsed = JSON.parse(data.contents);
-
-          if (parsed.shorturl) {
-            createdUrl = forceHttps(parsed.shorturl);
-          } else if (parsed.errormessage) {
-            throw new Error(parsed.errormessage);
+        // 2. Fallback to TinyURL if no alias and spoo failed
+        if (!createdUrl && !customAlias) {
+          const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
+          const fallbackUrl = (await fallbackRes.text()).trim();
+          if (fallbackUrl && fallbackUrl.startsWith("http")) {
+            createdUrl = forceHttps(fallbackUrl);
           }
         }
 
         if (createdUrl) {
           displayAll(createdUrl);
         } else {
-          throw new Error("Unable to shorten url");
+          throw new Error(customAlias ? `Naam '${customAlias}' pehle se reserved hai.` : "Short link nahi ban saka.");
         }
 
       } catch (err) {
-        showError(err.message || "Link create karne me dikkat aayi. Ek baar internet ya URL check karein.");
+        showError(err.message || "Link create karne me dikkat aayi.");
       } finally {
         shortenBtn.innerText = "Shorten URL";
         shortenBtn.disabled = false;
@@ -414,7 +407,7 @@
         ctx.fillStyle = "#cb898f";
         roundRect(ctx, 0, 0, W, H, 40, true, false);
 
-        // Stylish Title "My QR"
+        // Title "My QR"
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.font = "bold 92px 'Caveat', cursive, sans-serif";
@@ -428,31 +421,27 @@
         // Heart doodle
         drawHeart(ctx, W / 2 + 155, 210, 26);
 
-        // Custom Description text under SCAN TO OPEN (if provided)
+        // Custom Note under SCAN TO OPEN (if provided)
         let plateY = 275;
         if (customDesc) {
           ctx.font = "500 20px 'Poppins', sans-serif";
           ctx.fillStyle = "#ffffff";
           
-          // Truncate if user enters very long string
           let displayText = customDesc.length > 30 ? customDesc.substring(0, 28) + "..." : customDesc;
-          
-          // Text pill background
           const textMetrics = ctx.measureText(displayText);
           const pillW = textMetrics.width + 30;
           const pillH = 34;
           const pillX = (W - pillW) / 2;
           const pillY = 220;
 
-          ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
           roundRect(ctx, pillX, pillY, pillW, pillH, 17, true, false);
 
           ctx.fillStyle = "#ffffff";
           ctx.fillText(displayText, W / 2, pillY + 24);
-          plateY = 275;
         }
 
-        // White backplate for scanning
+        // White backplate
         const plateSize = 430;
         const plateX = (W - plateSize) / 2;
         ctx.fillStyle = "#ffffff";
@@ -479,7 +468,6 @@
           }
         }
 
-        // Footer
         drawFooterIcons(ctx, W / 2, 785);
         resolve();
       });
