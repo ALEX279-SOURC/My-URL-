@@ -271,11 +271,11 @@
       <input type="text" id="customAlias" placeholder="Custom name e.g. ipchat-app (optional)" />
       <input type="text" id="qrDesc" placeholder="QR Description e.g. @yourid or Project Notes (optional)" />
 
-      <!-- Optional URL Masking Toggle -->
+      <!-- Optional Masking Toggle -->
       <div class="mask-option">
         <input type="checkbox" id="maskUrl" />
         <label for="maskUrl">
-          <strong>Mask URL (iframe):</strong> Browser bar me short link hi dikhayein (Note: Google/Insta/YT jaisi sites block kar sakti hain)
+          <strong>Mask URL (iframe):</strong> Browser bar me short link hi dikhayein (Unchecked = Ultra-short spoo.me link)
         </label>
       </div>
       
@@ -358,6 +358,51 @@
       return code;
     }
 
+    // Helper: Spoo.me + TinyURL API Shortener
+    async function shortenViaApi(targetUrl, alias = "") {
+      let formData = new URLSearchParams();
+      formData.append("url", targetUrl);
+      if (alias) {
+        formData.append("alias", alias);
+      }
+
+      const spooRes = await fetch("https://spoo.me/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        body: formData.toString()
+      });
+
+      const responseText = await spooRes.text();
+      let spooData = null;
+      try {
+        spooData = JSON.parse(responseText);
+      } catch (e) {
+        if (alias) {
+          throw new Error(`Naam '${alias}' already liya ja chuka hai. Kripya naya naam try karein.`);
+        }
+      }
+
+      if (spooData && spooData.short_url) {
+        return forceHttps(spooData.short_url);
+      } else if (spooData && spooData.error) {
+        throw new Error(spooData.error);
+      }
+
+      // Fallback to TinyURL if no alias and spoo failed
+      if (!alias) {
+        const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(targetUrl)}`);
+        const fallbackUrl = (await fallbackRes.text()).trim();
+        if (fallbackUrl && fallbackUrl.startsWith("http")) {
+          return forceHttps(fallbackUrl);
+        }
+      }
+
+      throw new Error(alias ? `Naam '${alias}' pehle se reserved hai.` : "Short link nahi ban saka.");
+    }
+
     window.shortenUrl = async function () {
       const urlInput = document.getElementById("longUrl");
       const aliasInput = document.getElementById("customAlias");
@@ -382,41 +427,49 @@
 
       const finalUrl = forceHttps(longUrl);
 
-      shortenBtn.innerText = "Creating...";
+      shortenBtn.innerText = "Shortening...";
       shortenBtn.disabled = true;
 
       try {
-        let code = customAlias || generateRandomCode(5);
-        let linkRef = ref(db, `links/${code}`);
+        let createdUrl = null;
 
-        // Check if alias/code already exists
-        const snapshot = await get(linkRef);
-        if (snapshot.exists()) {
-          if (customAlias) {
-            throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Kripya naya naam try karein.`);
-          } else {
-            code = generateRandomCode(6);
-            linkRef = ref(db, `links/${code}`);
+        if (!isMasked) {
+          // 1. Direct API Mode -> Clean short link (https://spoo.me/...)
+          createdUrl = await shortenViaApi(finalUrl, customAlias);
+        } else {
+          // 2. Masked Mode -> Save in Firebase + wrap in short API link
+          let code = customAlias || generateRandomCode(5);
+          let linkRef = ref(db, `links/${code}`);
+
+          const snapshot = await get(linkRef);
+          if (snapshot.exists()) {
+            if (customAlias) {
+              throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Kripya naya naam try karein.`);
+            } else {
+              code = generateRandomCode(6);
+              linkRef = ref(db, `links/${code}`);
+            }
           }
+
+          await set(linkRef, {
+            url: finalUrl,
+            mask: true,
+            clicks: 0,
+            createdAt: Date.now()
+          });
+
+          const cleanDir = window.location.pathname.replace(/\/[^\/]*\.html$/, "/");
+          const basePath = window.location.origin + (cleanDir.endsWith("/") ? cleanDir : cleanDir + "/");
+          const maskedHostUrl = `${basePath}${code}`;
+
+          // Is masked link ko bhi spoo.me se chhota kar dein
+          createdUrl = await shortenViaApi(maskedHostUrl, customAlias);
         }
-
-        // Save to Firebase Realtime Database
-        await set(linkRef, {
-          url: finalUrl,
-          mask: isMasked,
-          clicks: 0,
-          createdAt: Date.now()
-        });
-
-        // Build clean GitHub Pages short URL
-        const basePath = window.location.origin + window.location.pathname.replace(/index\.html$/, "");
-        const cleanBase = basePath.endsWith("/") ? basePath : basePath + "/";
-        const createdUrl = `${cleanBase}${code}`;
 
         await displayAll(createdUrl);
 
       } catch (err) {
-        showError(err.message || "Firebase me link save karne me dikkat aayi.");
+        showError(err.message || "Link create karne me dikkat aayi.");
       } finally {
         shortenBtn.innerText = "Shorten URL";
         shortenBtn.disabled = false;
@@ -445,25 +498,20 @@
         canvas.width = W;
         canvas.height = H;
 
-        // Dusty Rose background
         ctx.fillStyle = "#cb898f";
         roundRect(ctx, 0, 0, W, H, 40, true, false);
 
-        // Title "My QR"
         ctx.fillStyle = "#ffffff";
         ctx.textAlign = "center";
         ctx.font = "bold 92px 'Caveat', cursive, sans-serif";
         ctx.fillText("My QR", W / 2, 145);
 
-        // Subtitle "SCAN TO OPEN"
         ctx.font = "600 22px 'Poppins', sans-serif";
         ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.fillText("SCAN TO OPEN", W / 2, 195);
 
-        // Heart doodle
         drawHeart(ctx, W / 2 + 155, 210, 26);
 
-        // Custom Note under SCAN TO OPEN (if provided)
         let plateY = 275;
         if (customDesc) {
           ctx.font = "500 20px 'Poppins', sans-serif";
@@ -483,13 +531,11 @@
           ctx.fillText(displayText, W / 2, pillY + 24);
         }
 
-        // White backplate
         const plateSize = 430;
         const plateX = (W - plateSize) / 2;
         ctx.fillStyle = "#ffffff";
         roundRect(ctx, plateX, plateY, plateSize, plateSize, 26, true, false);
 
-        // QR Code inside plate
         const qr = qrcode(0, 'M');
         qr.addData(url);
         qr.make();
