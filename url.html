@@ -72,6 +72,32 @@
       border-color: #667eea;
     }
 
+    .mask-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      background: #f7fafc;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+    }
+
+    .mask-option input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #667eea;
+      cursor: pointer;
+    }
+
+    .mask-option label {
+      font-size: 12px;
+      color: #4a5568;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+
     button.shorten-btn {
       padding: 13px;
       background: #667eea;
@@ -244,6 +270,14 @@
       <input type="url" id="longUrl" placeholder="Paste long URL (e.g. https://...)" required />
       <input type="text" id="customAlias" placeholder="Custom name e.g. ipchat-app (optional)" />
       <input type="text" id="qrDesc" placeholder="QR Description e.g. @yourid or Project Notes (optional)" />
+
+      <!-- Optional URL Masking Toggle -->
+      <div class="mask-option">
+        <input type="checkbox" id="maskUrl" />
+        <label for="maskUrl">
+          <strong>Mask URL (iframe):</strong> Browser bar me short link hi dikhayein (Note: Google/Insta/YT jaisi sites block kar sakti hain)
+        </label>
+      </div>
       
       <button class="shorten-btn" id="shortenBtn" onclick="shortenUrl()">Shorten URL</button>
     </div>
@@ -279,13 +313,30 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC2NIycuv4ng7poajfrnVDoTd7kSnkEVFE",
+      authDomain: "my-url-2db33.firebaseapp.com",
+      databaseURL: "https://my-url-2db33-default-rtdb.firebaseio.com",
+      projectId: "my-url-2db33",
+      storageBucket: "my-url-2db33.firebasestorage.app",
+      messagingSenderId: "1024392619396",
+      appId: "1:1024392619396:web:d5c08d6f9563e9795ea9d1",
+      measurementId: "G-3ZJRBTN616"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
     let currentShortUrl = "";
     let currentDescText = "";
 
-    window.onload = () => {
+    window.addEventListener("load", () => {
       document.fonts.ready.then(() => renderHistory());
-    };
+    });
 
     function forceHttps(url) {
       if (!url) return "";
@@ -298,16 +349,27 @@
       return res;
     }
 
-    async function shortenUrl() {
+    function generateRandomCode(len = 5) {
+      const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let code = "";
+      for (let i = 0; i < len; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    window.shortenUrl = async function () {
       const urlInput = document.getElementById("longUrl");
       const aliasInput = document.getElementById("customAlias");
       const descInput = document.getElementById("qrDesc");
+      const maskInput = document.getElementById("maskUrl");
       const shortenBtn = document.getElementById("shortenBtn");
       const resultBox = document.getElementById("resultBox");
       const errorMsg = document.getElementById("errorMsg");
 
       const longUrl = urlInput.value.trim();
       const customAlias = aliasInput.value.trim().replace(/[^a-zA-Z0-9-_]/g, "");
+      const isMasked = maskInput.checked;
       currentDescText = descInput.value.trim();
 
       errorMsg.style.display = "none";
@@ -320,66 +382,46 @@
 
       const finalUrl = forceHttps(longUrl);
 
-      shortenBtn.innerText = "Shortening...";
+      shortenBtn.innerText = "Creating...";
       shortenBtn.disabled = true;
 
       try {
-        let createdUrl = null;
+        let code = customAlias || generateRandomCode(5);
+        let linkRef = ref(db, `links/${code}`);
 
-        // 1. Spoo.me Safe Call
-        let formData = new URLSearchParams();
-        formData.append("url", finalUrl);
-        if (customAlias) {
-          formData.append("alias", customAlias);
-        }
-
-        const spooRes = await fetch("https://spoo.me/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json"
-          },
-          body: formData.toString()
-        });
-
-        const responseText = await spooRes.text();
-        let spooData = null;
-        try {
-          spooData = JSON.parse(responseText);
-        } catch (e) {
+        // Check if alias/code already exists
+        const snapshot = await get(linkRef);
+        if (snapshot.exists()) {
           if (customAlias) {
             throw new Error(`Naam '${customAlias}' already liya ja chuka hai. Kripya naya naam try karein.`);
+          } else {
+            code = generateRandomCode(6);
+            linkRef = ref(db, `links/${code}`);
           }
         }
 
-        if (spooData && spooData.short_url) {
-          createdUrl = forceHttps(spooData.short_url);
-        } else if (spooData && spooData.error) {
-          throw new Error(spooData.error);
-        }
+        // Save to Firebase Realtime Database
+        await set(linkRef, {
+          url: finalUrl,
+          mask: isMasked,
+          clicks: 0,
+          createdAt: Date.now()
+        });
 
-        // 2. Fallback to TinyURL if no alias and spoo failed
-        if (!createdUrl && !customAlias) {
-          const fallbackRes = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(finalUrl)}`);
-          const fallbackUrl = (await fallbackRes.text()).trim();
-          if (fallbackUrl && fallbackUrl.startsWith("http")) {
-            createdUrl = forceHttps(fallbackUrl);
-          }
-        }
+        // Build clean GitHub Pages short URL
+        const basePath = window.location.origin + window.location.pathname.replace(/index\.html$/, "");
+        const cleanBase = basePath.endsWith("/") ? basePath : basePath + "/";
+        const createdUrl = `${cleanBase}${code}`;
 
-        if (createdUrl) {
-          displayAll(createdUrl);
-        } else {
-          throw new Error(customAlias ? `Naam '${customAlias}' pehle se reserved hai.` : "Short link nahi ban saka.");
-        }
+        await displayAll(createdUrl);
 
       } catch (err) {
-        showError(err.message || "Link create karne me dikkat aayi.");
+        showError(err.message || "Firebase me link save karne me dikkat aayi.");
       } finally {
         shortenBtn.innerText = "Shorten URL";
         shortenBtn.disabled = false;
       }
-    }
+    };
 
     async function displayAll(url) {
       currentShortUrl = forceHttps(url);
@@ -524,7 +566,7 @@
       ctx.setLineDash([]);
     }
 
-    function downloadFlashCard() {
+    window.downloadFlashCard = function () {
       const canvas = document.getElementById("cardCanvas");
       const a = document.createElement("a");
       a.href = canvas.toDataURL("image/png");
@@ -532,9 +574,9 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    }
+    };
 
-    async function shareFlashCard() {
+    window.shareFlashCard = async function () {
       if (!currentShortUrl) return;
       const canvas = document.getElementById("cardCanvas");
 
@@ -563,16 +605,16 @@
         copyLink();
         alert("Link copy ho gaya hai!");
       }
-    }
+    };
 
-    function copyLink() {
+    window.copyLink = function () {
       if (!currentShortUrl) return;
       const copyBtn = document.getElementById("copyBtn");
       navigator.clipboard.writeText(currentShortUrl).then(() => {
         copyBtn.innerText = "Copied! ✓";
         setTimeout(() => copyBtn.innerText = "📋 Copy Link", 2000);
       });
-    }
+    };
 
     function showError(msg) {
       const errorMsg = document.getElementById("errorMsg");
@@ -614,10 +656,10 @@
       }).join("");
     }
 
-    function clearHistory() {
+    window.clearHistory = function () {
       localStorage.removeItem("shortened_urls");
       renderHistory();
-    }
+    };
   </script>
 </body>
 </html>
